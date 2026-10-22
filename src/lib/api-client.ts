@@ -18,9 +18,14 @@ async function fetchJson<T>(path: string): Promise<T> {
   if (!res.ok) {
     const err = json as ApiError
     const code = err.error?.code
+    if (code === 'PAGASA_UNAVAILABLE') {
+      throw new Error(
+        'PAGASA’s bulletin page could not be loaded. Check your connection or open the official bulletin from the footer link.',
+      )
+    }
     if (code === 'CONFIG' || code === 'API_KEY_MISSING') {
       throw new Error(
-        'Weather data is not set up yet. The site owner needs a free key from bagyo.io/developers (BAGYO_API_KEY on Vercel).',
+        'Map tracks need a free API key from bagyo.io/developers. Wind signals work from PAGASA without a key.',
       )
     }
     throw new Error(err.error?.message ?? `Request failed (${res.status})`)

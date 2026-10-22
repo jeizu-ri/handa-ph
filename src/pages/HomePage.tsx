@@ -135,6 +135,12 @@ export function HomePage() {
                 {formatManilaDateTime(data.data.bulletin.issuedAt)}
               </p>
             )}
+            {level === 0 && (
+              <p className="text-sm text-slate-400">
+                No wind signal is listed for this place in the current PAGASA bulletin (that can mean signal 0 or
+                that the name did not match — try a province or “Batanes”).
+              </p>
+            )}
             <p className="text-xs text-slate-500">
               Updated {formatManilaDateTime(new Date(dataUpdatedAt).toISOString())}
               {isFetching ? ' · refreshing…' : ''}

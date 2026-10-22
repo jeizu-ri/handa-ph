@@ -25,6 +25,14 @@ export function SettingsPage() {
       </section>
 
       <section className="rounded-xl border border-slate-700 bg-slate-800/40 p-4">
+        <h3 className="font-medium text-slate-200">Data source</h3>
+        <p className="mt-1 text-sm text-slate-400">
+          Wind signals and cyclone text are read from the public PAGASA bulletin page (no API key required). Optional{' '}
+          <code className="text-sky-300">BAGYO_API_KEY</code> on Vercel enables bagyo.io data and the track map.
+        </p>
+      </section>
+
+      <section className="rounded-xl border border-slate-700 bg-slate-800/40 p-4">
         <h3 className="font-medium text-slate-200">Notifications</h3>
         <p className="mt-1 text-sm text-slate-400">
           Web push alerts when your signal rises will arrive in a future update. For now, keep this app open or

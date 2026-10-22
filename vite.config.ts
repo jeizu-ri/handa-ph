@@ -3,6 +3,12 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import {
+  getPagasaSnapshot,
+  snapshotToCyclonesActive,
+  snapshotToLookupResponse,
+  snapshotToSignalsCurrent,
+} from './api/_lib/pagasa-scrape.js'
 
 function apiDevPlugin(env: Record<string, string>): Plugin {
   const pagasaBase = (env.BAGYO_PAGASA_API_URL || 'https://bagyo.io').replace(/\/$/, '')
@@ -16,11 +22,43 @@ function apiDevPlugin(env: Record<string, string>): Plugin {
     },
   })
 
-  async function proxyPagasa(path: string, res: ServerResponse, search = '') {
-    if (!apiKey) {
+  async function scrapePagasa(path: string, res: ServerResponse, search = '') {
+    try {
+      const snapshot = await getPagasaSnapshot()
+      let payload: unknown
+      if (path === '/v1/signals/lookup') {
+        const q = new URLSearchParams(search.replace(/^\?/, '')).get('q') ?? ''
+        payload = snapshotToLookupResponse(snapshot, q)
+      } else if (path === '/v1/signals/current') {
+        payload = snapshotToSignalsCurrent(snapshot)
+      } else if (path === '/v1/cyclones/active') {
+        payload = snapshotToCyclonesActive(snapshot)
+      } else {
+        res.statusCode = 404
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Unknown route' } }))
+        return
+      }
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify(payload))
+    } catch {
       res.statusCode = 503
       res.setHeader('Content-Type', 'application/json')
-      res.end(missingKeyBody)
+      res.end(
+        JSON.stringify({
+          error: {
+            code: 'PAGASA_UNAVAILABLE',
+            message: 'Could not read PAGASA bulletins right now.',
+          },
+        }),
+      )
+    }
+  }
+
+  async function proxyPagasa(path: string, res: ServerResponse, search = '') {
+    if (!apiKey) {
+      await scrapePagasa(path, res, search)
       return
     }
     const url = `${pagasaBase}${path}${search}`
