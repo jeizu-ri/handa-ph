@@ -31,7 +31,10 @@ export function MapPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <h2 className="text-xl font-semibold text-white">Track map</h2>
-      <p className="text-sm text-slate-400">Philippine area of responsibility — forecast tracks from bagyo.io</p>
+      <p className="text-sm text-slate-400">
+        Philippine area of responsibility — track from the PAGASA bulletin (approximate forecast points). Optional{' '}
+        bagyo.io key adds global agency tracks.
+      </p>
 
       {isLoading && <p className="text-slate-400">Loading tracks…</p>}
 

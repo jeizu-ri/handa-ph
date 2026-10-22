@@ -8,19 +8,13 @@ import {
   snapshotToCyclonesActive,
   snapshotToLookupResponse,
   snapshotToSignalsCurrent,
+  snapshotToStormTracks,
 } from './api/_lib/pagasa-scrape.js'
 
 function apiDevPlugin(env: Record<string, string>): Plugin {
   const pagasaBase = (env.BAGYO_PAGASA_API_URL || 'https://bagyo.io').replace(/\/$/, '')
   const apiKey = env.BAGYO_API_KEY || env.BAGYO_STORMS_API_KEY || ''
   const stormsBase = (env.BAGYO_STORMS_API_URL || 'https://bagyo.io').replace(/\/$/, '')
-
-  const missingKeyBody = JSON.stringify({
-    error: {
-      code: 'API_KEY_MISSING',
-      message: 'Set BAGYO_API_KEY in .env (free key at https://bagyo.io/developers)',
-    },
-  })
 
   async function scrapePagasa(path: string, res: ServerResponse, search = '') {
     try {
@@ -106,9 +100,21 @@ function apiDevPlugin(env: Record<string, string>): Plugin {
           }
           if (pathname === '/api/storms') {
             if (!apiKey) {
-              res.statusCode = 503
-              res.setHeader('Content-Type', 'application/json')
-              res.end(missingKeyBody)
+              try {
+                const snapshot = await getPagasaSnapshot()
+                const payload = snapshotToStormTracks(snapshot)
+                res.statusCode = 200
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify(payload))
+              } catch {
+                res.statusCode = 503
+                res.setHeader('Content-Type', 'application/json')
+                res.end(
+                  JSON.stringify({
+                    error: { code: 'PAGASA_UNAVAILABLE', message: 'Could not load storm track from PAGASA.' },
+                  }),
+                )
+              }
               return
             }
             try {

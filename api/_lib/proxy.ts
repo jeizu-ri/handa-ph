@@ -3,13 +3,13 @@ import {
   bagyoRequestHeaders,
   getBagyoApiKey,
   getPagasaApiBase,
-  missingBagyoKeyResponse,
 } from './bagyo.js'
 import {
   getPagasaSnapshot,
   snapshotToCyclonesActive,
   snapshotToLookupResponse,
   snapshotToSignalsCurrent,
+  snapshotToStormTracks,
 } from './pagasa-scrape.js'
 
 async function proxyPagasaUpstream(
@@ -80,11 +80,21 @@ export async function proxyPagasa(
 export async function proxyStorms(_req: VercelRequest, res: VercelResponse) {
   const key = getBagyoApiKey()
   const base = (process.env.BAGYO_STORMS_API_URL || 'https://bagyo.io').replace(/\/$/, '')
+
   if (!key) {
-    res.status(503).json({
-      ...missingBagyoKeyResponse(),
-      hint: 'Map tracks need BAGYO_API_KEY. Signals and cyclones work without a key via PAGASA scrape.',
-    })
+    try {
+      const snapshot = await getPagasaSnapshot()
+      const payload = snapshotToStormTracks(snapshot)
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+      res.status(200).json(payload)
+    } catch {
+      res.status(503).json({
+        error: {
+          code: 'PAGASA_UNAVAILABLE',
+          message: 'Could not load storm track from PAGASA bulletins right now.',
+        },
+      })
+    }
     return
   }
 
