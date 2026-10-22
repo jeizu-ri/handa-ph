@@ -42,6 +42,12 @@ export function MapPage() {
       <PaperCard pin tilt="left" className="overflow-hidden p-2">
         <StormMap storms={isLoading ? [] : parStorms} error={stormsError} />
       </PaperCard>
+
+      {!isLoading && !stormsError && parStorms.length > 0 && (
+        <p className="text-sm font-medium text-[#4a3d32]">
+          Red line = approximate path from PAGASA forecast text. Red dot = latest center position.
+        </p>
+      )}
     </div>
   )
 }

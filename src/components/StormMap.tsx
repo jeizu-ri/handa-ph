@@ -12,9 +12,83 @@ interface StormMapProps {
   error?: string | null
 }
 
+function stormPoints(storm: Storm): [number, number][] {
+  const points: [number, number][] = []
+  if (storm.current?.lon != null && storm.current?.lat != null) {
+    points.push([storm.current.lon, storm.current.lat])
+  }
+  const path = storm.forecast ?? (storm as Storm & { track?: { lat: number; lon: number }[] }).track ?? []
+  for (const p of path) {
+    if (p.lon != null && p.lat != null) points.push([p.lon, p.lat])
+  }
+  return points
+}
+
 export function StormMap({ storms, error }: StormMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
+  const stormsRef = useRef(storms)
+  stormsRef.current = storms
+
+  const drawStorms = (map: maplibregl.Map) => {
+    if (!map.isStyleLoaded()) return
+
+    const layers = map.getStyle()?.layers ?? []
+    for (const layer of layers) {
+      if (layer.id.startsWith('storm-') && map.getLayer(layer.id)) {
+        map.removeLayer(layer.id)
+      }
+    }
+    const sources = map.getStyle()?.sources ?? {}
+    for (const id of Object.keys(sources)) {
+      if (id.startsWith('storm-') && map.getSource(id)) {
+        map.removeSource(id)
+      }
+    }
+
+    stormsRef.current.forEach((storm, index) => {
+      const points = stormPoints(storm)
+      if (points.length === 0) return
+
+      const lineSource = `storm-${index}-line`
+      const pointSource = `storm-${index}-point`
+
+      map.addSource(lineSource, {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: { name: storm.name },
+          geometry: { type: 'LineString', coordinates: points },
+        },
+      })
+      map.addLayer({
+        id: `${lineSource}-layer`,
+        type: 'line',
+        source: lineSource,
+        paint: { 'line-color': '#c41e1e', 'line-width': 4 },
+      })
+
+      map.addSource(pointSource, {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: { name: storm.name },
+          geometry: { type: 'Point', coordinates: points[0] },
+        },
+      })
+      map.addLayer({
+        id: `${pointSource}-layer`,
+        type: 'circle',
+        source: pointSource,
+        paint: {
+          'circle-radius': 10,
+          'circle-color': '#c41e1e',
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#faf6ef',
+        },
+      })
+    })
+  }
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -39,6 +113,7 @@ export function StormMap({ storms, error }: StormMapProps) {
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
     mapRef.current = map
+    map.once('load', () => drawStorms(map))
 
     return () => {
       map.remove()
@@ -49,78 +124,8 @@ export function StormMap({ storms, error }: StormMapProps) {
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-
-    const run = () => {
-      if (!map.isStyleLoaded()) return
-
-      const layers = map.getStyle()?.layers ?? []
-      for (const layer of layers) {
-        if (layer.id.startsWith('storm-') && map.getLayer(layer.id)) {
-          map.removeLayer(layer.id)
-        }
-      }
-      const sources = map.getStyle()?.sources ?? {}
-      for (const id of Object.keys(sources)) {
-        if (id.startsWith('storm-') && map.getSource(id)) {
-          map.removeSource(id)
-        }
-      }
-
-      storms.forEach((storm, index) => {
-        const sourceId = `storm-${index}`
-        const points: [number, number][] = []
-
-        if (storm.current?.lon != null && storm.current?.lat != null) {
-          points.push([storm.current.lon, storm.current.lat])
-        }
-        for (const p of storm.forecast ?? []) {
-          if (p.lon != null && p.lat != null) points.push([p.lon, p.lat])
-        }
-
-        if (points.length === 0) return
-
-        const lineSource = `${sourceId}-line`
-        const pointSource = `${sourceId}-point`
-
-        map.addSource(lineSource, {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: { name: storm.name },
-            geometry: { type: 'LineString', coordinates: points },
-          },
-        })
-        map.addLayer({
-          id: `${lineSource}-layer`,
-          type: 'line',
-          source: lineSource,
-          paint: { 'line-color': '#38bdf8', 'line-width': 3 },
-        })
-
-        map.addSource(pointSource, {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: { name: storm.name },
-            geometry: { type: 'Point', coordinates: points[0] },
-          },
-        })
-        map.addLayer({
-          id: `${pointSource}-layer`,
-          type: 'circle',
-          source: pointSource,
-          paint: {
-            'circle-radius': 8,
-            'circle-color': '#f97316',
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#fff',
-          },
-        })
-      })
-    }
-
-    if (map.isStyleLoaded()) run()
-    else map.once('load', run)
+    if (map.isStyleLoaded()) drawStorms(map)
+    else map.once('load', () => drawStorms(map))
   }, [storms])
 
   return (
