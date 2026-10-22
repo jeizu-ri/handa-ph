@@ -156,8 +156,8 @@ export default defineConfig(({ mode }) => {
           name: 'Handa PH — Typhoon Alerts',
           short_name: 'Handa PH',
           description: 'Philippines typhoon and wind signal alerts (unofficial mirror — confirm with PAGASA)',
-          theme_color: '#0c4a6e',
-          background_color: '#0f172a',
+          theme_color: '#b8956a',
+          background_color: '#b8956a',
           display: 'standalone',
           start_url: '/',
           icons: [

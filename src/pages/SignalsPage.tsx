@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { PageIntro } from '../components/PageIntro'
+import { PaperCard } from '../components/PaperCard'
 import { useSignalsCurrent } from '../hooks/queries'
 import type { SignalArea } from '../lib/types'
 import { TCWS_INFO, normalizeSignalLevel } from '../lib/tcws'
@@ -42,46 +44,43 @@ export function SignalsPage() {
   }, [signals])
 
   return (
-    <div className="mx-auto max-w-lg space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xl font-semibold text-white">Signals nationwide</h2>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="text-sm text-sky-400 underline"
-          disabled={isFetching}
-        >
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-2">
+        <PageIntro title="Signal board" subtitle="Areas under tropical cyclone wind signals nationwide, highest first." />
+        <button type="button" onClick={() => refetch()} className="btn-ghost shrink-0 text-xs" disabled={isFetching}>
           Refresh
         </button>
       </div>
 
-      {isLoading && <p className="text-slate-400">Loading…</p>}
+      {isLoading && <p className="font-medium">Loading…</p>}
       {isError && (
-        <p className="text-red-300">{error instanceof Error ? error.message : 'Failed to load signals'}</p>
+        <PaperCard className="p-4 text-sm font-medium text-[var(--color-stamp)]">
+          {error instanceof Error ? error.message : 'Failed to load signals'}
+        </PaperCard>
       )}
 
       {!isLoading && !isError && grouped.length === 0 && (
-        <p className="rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-6 text-center text-slate-400">
-          No wind signals are in effect according to the current feed.
-        </p>
+        <PaperCard className="p-6 text-center font-medium text-[#5c4a38]">
+          No wind signals in effect in the current feed.
+        </PaperCard>
       )}
 
       <div className="space-y-4">
         {grouped.map(([level, areas]) => {
           const info = TCWS_INFO[level as SignalLevel]
           return (
-            <section key={level} className={`rounded-xl border ${info.border} overflow-hidden`}>
-              <div className={`${info.bg} ${info.text} px-4 py-2 font-semibold`}>
+            <PaperCard key={level} pin tilt={level % 2 === 0 ? 'left' : 'right'} className="overflow-hidden">
+              <div className={`${info.bg} ${info.text} px-4 py-3 font-display text-lg font-bold`}>
                 {info.label} · {info.winds}
               </div>
-              <ul className="divide-y divide-slate-700 bg-slate-800/50">
+              <ul className="divide-y-2 divide-dashed divide-[#d9ccb8]">
                 {areas.map((a) => (
-                  <li key={`${level}-${a.name}-${a.psgcCode ?? ''}`} className="px-4 py-2 text-sm text-slate-200">
+                  <li key={`${level}-${a.name}-${a.psgcCode ?? ''}`} className="px-4 py-2.5 text-sm font-medium">
                     {a.name}
                   </li>
                 ))}
               </ul>
-            </section>
+            </PaperCard>
           )
         })}
       </div>

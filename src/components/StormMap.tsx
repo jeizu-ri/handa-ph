@@ -126,18 +126,18 @@ export function StormMap({ storms, error }: StormMapProps) {
   return (
     <div className="space-y-2">
       {error && (
-        <p className="rounded-lg border border-amber-700/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-100">
+        <p className="mb-2 border-2 border-[var(--color-stamp)] bg-[#fff5f5] px-3 py-2 text-sm font-medium text-[var(--color-stamp)]">
           {error}
         </p>
       )}
       <div
         ref={containerRef}
-        className="h-[min(60dvh,420px)] w-full overflow-hidden rounded-xl border border-slate-700"
+        className="h-[min(60dvh,420px)] w-full overflow-hidden border-2 border-[var(--color-ink)]"
         role="img"
         aria-label="Storm track map for the Philippines area"
       />
       {storms.length === 0 && !error && (
-        <p className="text-sm text-slate-400">No active storm tracks in the feed right now.</p>
+        <p className="text-sm font-medium text-[#5c4a38]">No storm track in the bulletin right now.</p>
       )}
     </div>
   )
