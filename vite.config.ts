@@ -5,15 +5,28 @@ import { VitePWA } from 'vite-plugin-pwa'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 function apiDevPlugin(env: Record<string, string>): Plugin {
-  const pagasaBase = env.BAGYO_PAGASA_API_URL || 'http://localhost:3000'
-  const stormsKey = env.BAGYO_STORMS_API_KEY || ''
-  const stormsBase = env.BAGYO_STORMS_API_URL || 'https://bagyo.io'
+  const pagasaBase = (env.BAGYO_PAGASA_API_URL || 'https://bagyo.io').replace(/\/$/, '')
+  const apiKey = env.BAGYO_API_KEY || env.BAGYO_STORMS_API_KEY || ''
+  const stormsBase = (env.BAGYO_STORMS_API_URL || 'https://bagyo.io').replace(/\/$/, '')
+
+  const missingKeyBody = JSON.stringify({
+    error: {
+      code: 'API_KEY_MISSING',
+      message: 'Set BAGYO_API_KEY in .env (free key at https://bagyo.io/developers)',
+    },
+  })
 
   async function proxyPagasa(path: string, res: ServerResponse, search = '') {
+    if (!apiKey) {
+      res.statusCode = 503
+      res.setHeader('Content-Type', 'application/json')
+      res.end(missingKeyBody)
+      return
+    }
     const url = `${pagasaBase}${path}${search}`
     try {
       const upstream = await fetch(url, {
-        headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json', 'X-API-Key': apiKey },
       })
       const body = await upstream.text()
       res.statusCode = upstream.status
@@ -54,22 +67,15 @@ function apiDevPlugin(env: Record<string, string>): Plugin {
             return
           }
           if (pathname === '/api/storms') {
-            if (!stormsKey) {
+            if (!apiKey) {
               res.statusCode = 503
               res.setHeader('Content-Type', 'application/json')
-              res.end(
-                JSON.stringify({
-                  error: {
-                    code: 'STORMS_KEY_MISSING',
-                    message: 'Set BAGYO_STORMS_API_KEY for track data',
-                  },
-                }),
-              )
+              res.end(missingKeyBody)
               return
             }
             try {
               const upstream = await fetch(`${stormsBase}/v1/storms`, {
-                headers: { 'X-API-Key': stormsKey, Accept: 'application/json' },
+                headers: { 'X-API-Key': apiKey, Accept: 'application/json' },
               })
               const body = await upstream.text()
               res.statusCode = upstream.status

@@ -17,6 +17,12 @@ async function fetchJson<T>(path: string): Promise<T> {
   }
   if (!res.ok) {
     const err = json as ApiError
+    const code = err.error?.code
+    if (code === 'CONFIG' || code === 'API_KEY_MISSING') {
+      throw new Error(
+        'Weather data is not set up yet. The site owner needs a free key from bagyo.io/developers (BAGYO_API_KEY on Vercel).',
+      )
+    }
     throw new Error(err.error?.message ?? `Request failed (${res.status})`)
   }
   return json as T
