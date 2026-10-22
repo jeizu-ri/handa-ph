@@ -195,6 +195,17 @@ function areaMatchesQuery(area: string, query: string): boolean {
   return false
 }
 
+function lookupCandidates(query: string): string[] {
+  const trimmed = query.trim()
+  if (!trimmed) return []
+  const parts = trimmed.split(',').map((p) => p.trim()).filter(Boolean)
+  const out: string[] = []
+  for (const p of [trimmed, ...parts]) {
+    if (p && !out.includes(p)) out.push(p)
+  }
+  return out
+}
+
 export function lookupSignalLevel(snapshot: Snapshot, query: string): number {
   const q = query.trim()
   if (!q) return 0
@@ -207,11 +218,24 @@ export function lookupSignalLevel(snapshot: Snapshot, query: string): number {
   return best
 }
 
+function lookupSignalLevelBest(snapshot: Snapshot, query: string): { level: number; matched: string } {
+  let best = 0
+  let matched = query.trim()
+  for (const candidate of lookupCandidates(query)) {
+    const level = lookupSignalLevel(snapshot, candidate)
+    if (level > best) {
+      best = level
+      matched = candidate
+    }
+  }
+  return { level: best, matched }
+}
+
 export function snapshotToLookupResponse(snapshot: Snapshot, query: string) {
-  const level = lookupSignalLevel(snapshot, query)
+  const { level, matched } = lookupSignalLevelBest(snapshot, query)
   return {
     data: {
-      location: { name: query },
+      location: { name: query, matchedArea: matched !== query.trim() ? matched : undefined },
       signal: level > 0 ? { level } : null,
       cyclone: snapshot.cycloneName ? { name: snapshot.cycloneName } : null,
       bulletin: {

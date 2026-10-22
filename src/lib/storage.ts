@@ -1,20 +1,55 @@
+const PLACE_KEY = 'handa.savedPlace'
 const LOCATION_KEY = 'handa.savedLocation'
 const LAST_SIGNAL_KEY = 'handa.lastSignalLevel'
 
-export function getSavedLocation(): string {
-  try {
-    return localStorage.getItem(LOCATION_KEY) ?? ''
-  } catch {
-    return ''
-  }
+export interface SavedPlace {
+  label: string
+  lookup: string
+  lat?: number
+  lon?: number
 }
 
-export function setSavedLocation(name: string) {
+export function getSavedPlace(): SavedPlace | null {
   try {
-    localStorage.setItem(LOCATION_KEY, name)
+    const raw = localStorage.getItem(PLACE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw) as SavedPlace
+      if (parsed.label && parsed.lookup) return parsed
+    }
+    const legacy = localStorage.getItem(LOCATION_KEY)
+    if (legacy) return { label: legacy, lookup: legacy }
   } catch {
     /* ignore */
   }
+  return null
+}
+
+export function setSavedPlace(place: SavedPlace) {
+  try {
+    localStorage.setItem(PLACE_KEY, JSON.stringify(place))
+    localStorage.setItem(LOCATION_KEY, place.label)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearSavedPlace() {
+  try {
+    localStorage.removeItem(PLACE_KEY)
+    localStorage.removeItem(LOCATION_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** @deprecated use getSavedPlace */
+export function getSavedLocation(): string {
+  return getSavedPlace()?.label ?? ''
+}
+
+/** @deprecated use setSavedPlace */
+export function setSavedLocation(name: string) {
+  setSavedPlace({ label: name, lookup: name })
 }
 
 export function getLastSignalLevel(): number | null {

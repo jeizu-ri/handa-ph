@@ -1,9 +1,9 @@
 import { PaperCard } from '../components/PaperCard'
 import { PageIntro } from '../components/PageIntro'
-import { getSavedLocation, setSavedLocation } from '../lib/storage'
+import { clearSavedPlace, getSavedPlace } from '../lib/storage'
 
 export function SettingsPage() {
-  const saved = getSavedLocation()
+  const saved = getSavedPlace()
 
   return (
     <div className="space-y-5">
@@ -11,13 +11,13 @@ export function SettingsPage() {
 
       <PaperCard className="p-4">
         <h3 className="font-display text-lg font-bold">Pinned location</h3>
-        <p className="mt-2 text-sm">{saved || 'None yet — set it on the Signal tab.'}</p>
+        <p className="mt-2 text-sm">{saved?.label || 'None yet — set it on the Signal tab.'}</p>
         {saved && (
           <button
             type="button"
             className="mt-3 text-sm font-bold text-[var(--color-stamp)] underline"
             onClick={() => {
-              setSavedLocation('')
+              clearSavedPlace()
               window.location.href = '/'
             }}
           >

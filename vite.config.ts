@@ -10,6 +10,7 @@ import {
   snapshotToSignalsCurrent,
   snapshotToStormTracks,
 } from './api/_lib/pagasa-scrape.js'
+import { reversePhLocation, searchPhLocations } from './api/_lib/nominatim.js'
 
 function apiDevPlugin(env: Record<string, string>): Plugin {
   const pagasaBase = (env.BAGYO_PAGASA_API_URL || 'https://bagyo.io').replace(/\/$/, '')
@@ -96,6 +97,35 @@ function apiDevPlugin(env: Record<string, string>): Plugin {
           if (pathname === '/api/signals/lookup') {
             const q = url.searchParams.get('q') ?? ''
             await proxyPagasa('/v1/signals/lookup', res, `?q=${encodeURIComponent(q)}`)
+            return
+          }
+          if (pathname === '/api/locations/search') {
+            const q = url.searchParams.get('q') ?? ''
+            try {
+              const data = await searchPhLocations(q)
+              res.statusCode = 200
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ data }))
+            } catch {
+              res.statusCode = 502
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: { code: 'UPSTREAM_ERROR', message: 'Location search unavailable' } }))
+            }
+            return
+          }
+          if (pathname === '/api/locations/reverse') {
+            const lat = Number(url.searchParams.get('lat'))
+            const lon = Number(url.searchParams.get('lon'))
+            try {
+              const data = await reversePhLocation(lat, lon)
+              res.statusCode = 200
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ data }))
+            } catch {
+              res.statusCode = 502
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: { code: 'UPSTREAM_ERROR', message: 'Reverse geocode failed' } }))
+            }
             return
           }
           if (pathname === '/api/storms') {

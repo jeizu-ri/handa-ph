@@ -10,6 +10,8 @@ const PAR_BOUNDS: [[number, number], [number, number]] = [
 interface StormMapProps {
   storms: Storm[]
   error?: string | null
+  userMarker?: { lat: number; lon: number } | null
+  compact?: boolean
 }
 
 function stormPoints(storm: Storm): [number, number][] {
@@ -24,24 +26,29 @@ function stormPoints(storm: Storm): [number, number][] {
   return points
 }
 
-export function StormMap({ storms, error }: StormMapProps) {
+export function StormMap({ storms, error, userMarker, compact }: StormMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const stormsRef = useRef(storms)
+  const userRef = useRef(userMarker)
   stormsRef.current = storms
+  userRef.current = userMarker
 
   const drawStorms = (map: maplibregl.Map) => {
     if (!map.isStyleLoaded()) return
 
     const layers = map.getStyle()?.layers ?? []
     for (const layer of layers) {
-      if (layer.id.startsWith('storm-') && map.getLayer(layer.id)) {
+      if (
+        (layer.id.startsWith('storm-') || layer.id.startsWith('user-')) &&
+        map.getLayer(layer.id)
+      ) {
         map.removeLayer(layer.id)
       }
     }
     const sources = map.getStyle()?.sources ?? {}
     for (const id of Object.keys(sources)) {
-      if (id.startsWith('storm-') && map.getSource(id)) {
+      if ((id.startsWith('storm-') || id.startsWith('user-')) && map.getSource(id)) {
         map.removeSource(id)
       }
     }
@@ -88,6 +95,45 @@ export function StormMap({ storms, error }: StormMapProps) {
         },
       })
     })
+
+    const user = userRef.current
+    if (user) {
+      map.addSource('user-marker', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Point', coordinates: [user.lon, user.lat] },
+        },
+      })
+      map.addLayer({
+        id: 'user-marker-layer',
+        type: 'circle',
+        source: 'user-marker',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': '#1d4ed8',
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#faf6ef',
+        },
+      })
+    }
+
+    const bounds = new maplibregl.LngLatBounds()
+    let hasBounds = false
+    stormsRef.current.forEach((storm) => {
+      for (const p of stormPoints(storm)) {
+        bounds.extend(p)
+        hasBounds = true
+      }
+    })
+    if (user) {
+      bounds.extend([user.lon, user.lat])
+      hasBounds = true
+    }
+    if (hasBounds) {
+      map.fitBounds(bounds, { padding: compact ? 36 : 48, maxZoom: compact ? 6 : 7 })
+    }
   }
 
   useEffect(() => {
@@ -126,7 +172,7 @@ export function StormMap({ storms, error }: StormMapProps) {
     if (!map) return
     if (map.isStyleLoaded()) drawStorms(map)
     else map.once('load', () => drawStorms(map))
-  }, [storms])
+  }, [storms, userMarker])
 
   return (
     <div className="space-y-2">
@@ -137,7 +183,9 @@ export function StormMap({ storms, error }: StormMapProps) {
       )}
       <div
         ref={containerRef}
-        className="h-[min(60dvh,420px)] w-full overflow-hidden border-2 border-[var(--color-ink)]"
+        className={`w-full overflow-hidden border-2 border-[var(--color-ink)] ${
+          compact ? 'h-[min(36dvh,260px)]' : 'h-[min(60dvh,420px)]'
+        }`}
         role="img"
         aria-label="Storm track map for the Philippines area"
       />
